@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     printf("Đã kết nối với client.\n");
 
     // Gửi xâu chào đến client
-    FILE *fp_greeting = fopen(argv[2], "r");
+    FILE *fp_greeting = fopen(argv[2], "rb");
     if (fp_greeting == NULL) {
         perror("Lỗi: Không thể mở tệp chào");
         exit(1);
@@ -55,16 +55,22 @@ int main(int argc, char *argv[]) {
 
     char greeting_buffer[BUFFER_SIZE];
     int greeting_bytes_read;
-    while ((greeting_bytes_read = fread(greeting_buffer, 1, BUFFER_SIZE, fp_greeting)) > 0) {
-        if (send(client_sockfd, greeting_buffer, greeting_bytes_read, 0) == -1) {
-            perror("Lỗi: Không thể gửi chào đến client");
-            exit(1);
-        }
+    // while ((greeting_bytes_read = fread(greeting_buffer, 1, BUFFER_SIZE, fp_greeting)) > 0) {
+    //     if (send(client_sockfd, greeting_buffer, greeting_bytes_read, 0) == -1) {
+    //         perror("Lỗi: Không thể gửi chào đến client");
+    //         exit(1);
+    //     }
+    // }
+    while (!feof(fp_greeting))
+    {
+        int greeting_bytes_read = fread(greeting_buffer, 1, sizeof(greeting_buffer), fp_greeting);
+        greeting_buffer[greeting_bytes_read] = 0;
     }
     fclose(fp_greeting);
+    send(client_sockfd, greeting_buffer, strlen(greeting_buffer), 0);
 
     // Nhận và ghi toàn bộ nội dung client gửi đến vào tệp tin
-    FILE *fp_input = fopen(argv[3], "w");
+    FILE *fp_input = fopen(argv[3], "wb");
     if (fp_input == NULL) {
         perror("Lỗi: Không thể mở tệp đầu vào");
         exit(1);
@@ -72,10 +78,17 @@ int main(int argc, char *argv[]) {
 
     char input_buffer[BUFFER_SIZE];
     int input_bytes_read;
-    while ((input_bytes_read = recv(client_sockfd, input_buffer, BUFFER_SIZE, 0)) > 0) {
-        if (fwrite(input_buffer, 1, strlen(input_buffer), fp_input) != input_bytes_read) {
-            break;
-        }
+    // while ((input_bytes_read = recv(client_sockfd, input_buffer, BUFFER_SIZE, 0)) > 0) {
+    //     if (fwrite(input_buffer, 1, strlen(input_buffer), fp_input) != input_bytes_read) {
+    //         break;
+    //     }
+    // }
+    while (1)
+    {
+        input_bytes_read = recv(client_sockfd, input_buffer, sizeof(input_buffer), 0);
+        if (input_bytes_read == 1) break;
+        input_buffer[input_bytes_read] = 0;
+        fwrite(input_buffer, 1, strlen(input_buffer), fp_input); 
     }
     if (input_bytes_read == -1) {
         perror("Lỗi: Không thể nhận dữ liệu từ client");
